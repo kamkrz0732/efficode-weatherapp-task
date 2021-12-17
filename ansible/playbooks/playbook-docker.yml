@@ -1,0 +1,62 @@
+---
+
+- hosts: azure-redhat
+  become: yes
+ 
+  tasks:
+    - name: add docker gpg key
+      rpm_key:
+        key: https://download.docker.com/linux/centos/gpg
+        state: present
+      become: yes
+
+    - name: Docker Yum Setup
+      yum_repository:
+        name: docker-repo
+        baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
+        description: Docker yum repo setup
+        gpgcheck: yes
+
+    - name: Python 3 install
+      package:
+        name: python36
+
+    - name: Docker Module for Python
+      pip:
+        name: docker-py
+
+    - name: Install containerd.io
+      package:
+        name: containerd.io.x86_64
+        state: present
+
+    - name: Install docker
+      package:
+        name: docker-ce-18.09.1
+        state: present
+
+    - name: Create a directory if it does not exist
+      file:
+        path: /opt/webapp/
+        state: directory
+
+    - name: copying the code via rsync
+      synchronize:
+        src: /home/kkaminski/weatherapp/
+        dest: /opt/webapp/
+        dirs: yes
+        mode: pull
+        rsync_opts: 
+          - "--exclude=node_modules"
+          - "--exclude=backend/node_modules"
+          - "--exclude=frontend/node_modules"
+
+    - name: Docker service
+      service:
+       name: docker
+       state: started
+       enabled: yes
+
+    - name: run the service defined in my_project's docker-compose.yml
+      docker_compose:
+        project_src: /home/kkaminski/weatherapp/

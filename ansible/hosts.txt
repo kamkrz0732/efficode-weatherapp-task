@@ -1,0 +1,2 @@
+[azure-redhat]
+40.85.83.51 ansible_user=azureuser nsible_ssh_private_key_file=/home/kkaminski/.ssh/az-redhat

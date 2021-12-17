@@ -1,0 +1,24 @@
+# Docker Compose version 2
+version: "2"
+
+services:
+  
+  # frontend tier container
+  app-frontend:
+    build: ./frontend
+    image: weatherapp-frontend:1.0
+    ports:
+      - "80:8000"
+    container_name: app-frontend
+    restart: always
+    # Ensure the app-frontend container starts after app-backend
+    depends_on:
+      - app-backend 
+  # backend tier container
+  app-backend:
+    build: ./backend
+    image: weatherapp-backend:1.0
+    ports:
+      - "9000:9000"
+    container_name: app-backend
+    restart: always
