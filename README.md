@@ -1,12 +1,35 @@
 # Weatherapp
 
-There was a beautiful idea of building an app that would show the upcoming weather. The developers wrote a nice backend and a frontend following the latest principles and - to be honest - bells and whistles. However, the developers did not remember to add any information about the infrastructure or even setup instructions in the source code.
+In order to better move through various elements of the application and its features, below structure was created:
 
-Luckily we now have [docker compose](https://docs.docker.com/compose/) saving us from installing the tools on our computer, and making sure the app looks (and is) the same in development and in production. All we need is someone to add the few missing files!
+* locally
 
-## Prerequisites
+/weatherapp
+├── ansible
+│   ├── ansible.cfg
+│   ├── hosts.txt
+│   ├── playbooks
+│   │   ├── playbook-docker.yml
+│   │   └── playbook-docker-compose.yml
+├── backend
+├── docker-compose.yml
+├── frontend
+├── .git
+├── .gitignore
+├── package-lock.json
+├── README.md
 
-* An [openweathermap](http://openweathermap.org/) API key.
+While backend communicates with OpenWeather map portal through API calls, frontend serves the data in form of images to indicate current weather in specified (in backend) location.
+
+## Prerequisites and setup 
+
+* In order to obtain API key an account was needed within [openweathermap](http://openweathermap.org/) service.
+
+* On local machine (in my case Virtual Machine) couple of additional software needed to be installed, including:
+
+**docker**
+**ansible**
+
 
 ## Returning your solution
 
@@ -60,13 +83,77 @@ Here are some things in different categories that you can do to make the app bet
 
 *The biggest trend of recent times is developing, deploying and hosting your applications in cloud. Knowing cloud -related technologies is essential for modern IT specialists.*
 
-* Set up the weather service in a free cloud hosting service, e.g. [AWS](https://aws.amazon.com/free/) or [Google Cloud](https://cloud.google.com/free/).
+* Service was deployed within Azure VM - while being IaaS, this deployment is most suitable for "lift and shift" scenarios. With free subscription trial offer and multiple size to choose from, the VM itself can be suited to every needs (development, testing or production environments)
+
+Resource Group
+Name: weatherapp-resourcegroup
+
+Azure VM
+name: weatherapp-appvm
+OS:Linux (redhat 8.2)
+Location:North Europe
+Size: Standard B1s (1 vcpu, 1 GiB memory)
+Tags
+	type : task-efficode
+	
+	
+The most important part from the Azure VM was its IP address, needed for Ansible inventory configuration	
+
+* However during deploying the app using Ansible playbook there were issues regarding using docker-compose module for Ansible. Due to insuficient time and technical skills (at the moment), a different approach was made: to deploy weatherapp via Azure WebApp service 
+
+!IMPORTANT NOTE
+Azure webapp currently has multi-container deployment (via docker compose) in Preview mode. That means that while the service is available for use, there might be some issues still to work, regarding its functionality. Moreover Microsoft does not quarantee any SLA for services within Preview mode.
+
+
+*Container registries
+Login server/name: weatherappcontainers.azurecr.io
+Location:North Europe
+SKU: Basic
+Tags: 
+	type: efficode-task
+
+*WebApp
+Name: weatherapp-appservice
+Publish :Docker Container
+Image:Tag Docker Compose
+Tags: 
+	type: efficode-task
+	
+App Service Plan (New)
+Operating System: Linux
+Region: North Europe
+SKU: Free	
+
+**Docker-compose file for Azure WebApp**
+# Docker Compose version 3
+version: "3"
+
+services:
+  backend:
+    image: weatherappcontainers.azurecr.io/weatherapp-backend-1.0
+    ports:
+       - "9000:9000"
+    container_name: app-backend
+    restart: always
+  
+  web:
+    image: weatherappcontainers.azurecr.io/weatherapp-frontend-1.0
+    ports:
+      - "80:8000"
+    container_name: app-frontend
+    restart: always
+    depends_on: backend
+
 
 ### Ansible
 
 *Automating deployment processes saves a lot of valuable time and reduces chances of costly errors. Infrastructure as Code removes manual steps and allows people to concentrate on core activities.*
 
-* Write [ansible](http://docs.ansible.com/ansible/intro.html) playbooks for installing [docker](https://www.docker.com/) and the app itself.
+* Ansible playbook steps are as follows (general overview):
+. Install and start docker (its repository and Python module)
+. Retrieve files from GitHub repository
+
+
 
 ### Documentation
 
@@ -89,3 +176,4 @@ Here are some things in different categories that you can do to make the app bet
 * Structure the code and project folder structure in a modular and logical fashion for extra points.
 
 * Try to avoid any bugs or weirdness in the operating logic.
+

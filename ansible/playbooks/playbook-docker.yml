@@ -1,39 +1,32 @@
 ---
 
-- hosts: azure-redhat
+- hosts: azure-ubuntu
   become: yes
  
   tasks:
-    - name: add docker gpg key
-      rpm_key:
-        key: https://download.docker.com/linux/centos/gpg
+    - name: Install aptitude using apt
+      apt: name=aptitude state=latest update_cache=yes force_apt_get=yes
+
+    - name: Install required system packages
+      apt: name={{ item }} state=latest update_cache=yes
+      loop: [ 'apt-transport-https', 'ca-certificates', 'curl', 'software-properties-common', 'python3-pip', 'virtualenv', 'python3-setuptools']
+
+    - name: Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
         state: present
-      become: yes
 
-    - name: Docker Yum Setup
-      yum_repository:
-        name: docker-repo
-        baseurl: https://download.docker.com/linux/centos/7/x86_64/stable/
-        description: Docker yum repo setup
-        gpgcheck: yes
+    - name: Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu xenial stable
+        state: present
 
-    - name: Python 3 install
-      package:
-        name: python36
+    - name: Update apt and install docker-ce
+      apt: update_cache=yes name=docker-ce state=latest
 
-    - name: Docker Module for Python
+    - name: Install Docker Module for Python
       pip:
-        name: docker-py
-
-    - name: Install containerd.io
-      package:
-        name: containerd.io.x86_64
-        state: present
-
-    - name: Install docker
-      package:
-        name: docker-ce-18.09.1
-        state: present
+        name: docker
 
     - name: Create a directory if it does not exist
       file:
@@ -45,7 +38,7 @@
         src: /home/kkaminski/weatherapp/
         dest: /opt/webapp/
         dirs: yes
-        mode: pull
+        mode: push
         rsync_opts: 
           - "--exclude=node_modules"
           - "--exclude=backend/node_modules"
@@ -53,10 +46,48 @@
 
     - name: Docker service
       service:
-       name: docker
-       state: started
-       enabled: yes
+        name: docker
+        state: started
+        enabled: yes
 
-    - name: run the service defined in my_project's docker-compose.yml
-      docker_compose:
-        project_src: /home/kkaminski/weatherapp/
+    - name: build container image
+      docker_image:
+        name: image-backend
+        build:
+          path: /opt/webapp/backend
+          dockerfile: /opt/webapp/backend/Dockerfile
+        source: build
+        state: present
+
+    - name: build container image
+      docker_image:
+        name: image-frontend
+        build:
+          path: /opt/webapp/frontend
+          dockerfile: /opt/webapp/frontend/Dockerfile
+        source: build
+        state: present	
+
+    - name: Create a network
+      docker_network:
+        name: weatherapp
+
+    - name: Create backend container
+      docker_container:
+        name: container-backend
+        image: image-backend
+        network_mode:
+          name: weatherapp
+        published_ports: "9000:9000"
+          #command: ["npm", "start"]
+        state: present
+
+    - name: Create frontend container
+      docker_container:
+        name: container-frontend
+        image: image-frontend
+        network_mode:
+          name: weatherapp
+        published_ports: "80:8000"
+        #command: ["npm", "start"]
+        state: present

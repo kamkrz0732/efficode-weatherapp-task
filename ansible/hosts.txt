@@ -1,2 +1,5 @@
 [azure-redhat]
-40.85.83.51 ansible_user=azureuser nsible_ssh_private_key_file=/home/kkaminski/.ssh/az-redhat
+IP_OF_AZURE_VM ansible_user=azureuser ansible_ssh_private_key_file=/home/kkaminski/.ssh/az-redhat
+
+[azure-ubuntu]
+13.79.133.181 ansible_user=azureuser ansible_ssh_private_key_file=/home/kkaminski/.ssh/az-ubuntu
